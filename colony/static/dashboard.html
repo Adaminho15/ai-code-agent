@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🐜 La Colonie — dashboard live</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3;
+    --dim: #8b949e; --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+    --yellow: #d29922; --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 14px; height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; padding: 10px 16px;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; }
+  .badge {
+    padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+    background: var(--border); color: var(--text);
+  }
+  .badge.live { background: #1f3d1f; color: var(--green); }
+  .badge.mock { background: #3d2f1f; color: var(--yellow); }
+  .hstat { color: var(--dim); font-size: 12px; }
+  .hspacer { flex: 1; }
+  button {
+    background: #21262d; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px;
+  }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: wait; }
+  button.primary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+
+  main {
+    flex: 1; display: grid; gap: 12px; padding: 12px 16px; overflow: hidden;
+    grid-template-columns: 300px 1fr 320px;
+  }
+  @media (max-width: 1100px) {
+    main { grid-template-columns: 1fr; overflow-y: auto; }
+    .col { max-height: none !important; }
+  }
+  .col { display: flex; flex-direction: column; gap: 12px; min-width: 0;
+         overflow-y: auto; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+  }
+  .panel h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--dim); margin-bottom: 8px;
+  }
+  .larbin {
+    display: flex; align-items: center; gap: 8px; padding: 6px 4px;
+    border-bottom: 1px solid #21262d; flex-wrap: wrap;
+  }
+  .larbin:last-child { border-bottom: none; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .dot.idle { background: var(--dim); } .dot.working { background: var(--green);
+    animation: pulse 1s infinite alternate; }
+  .dot.repairing { background: var(--yellow); animation: pulse .5s infinite alternate; }
+  @keyframes pulse { to { opacity: .4; } }
+  .lname { font-weight: 700; }
+  .lmeta { color: var(--dim); font-size: 12px; }
+  .prov { display: flex; justify-content: space-between; padding: 4px 0;
+          font-size: 12.5px; border-bottom: 1px solid #21262d; gap: 6px; }
+  .prov:last-child { border-bottom: none; }
+  .ok { color: var(--green); } .ko { color: var(--red); } .warn { color: var(--yellow); }
+
+  #feed { display: flex; flex-direction: column; gap: 6px; overflow-y: auto;
+          padding: 10px 12px; background: var(--panel);
+          border: 1px solid var(--border); border-radius: 8px; flex: 1; }
+  .msg { border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px;
+         background: #0d1117; animation: slide .25s ease; }
+  @keyframes slide { from { opacity: 0; transform: translateY(-6px); } }
+  .mhead { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+           font-size: 12px; color: var(--dim); }
+  .mfrom { font-weight: 700; }
+  .mbody { margin-top: 3px; font-size: 13px; white-space: pre-wrap;
+           word-break: break-word; }
+  .mdetails { color: var(--dim); font-size: 12px; }
+  .mdetails summary { cursor: pointer; margin-top: 2px; }
+  .mdetails pre { margin-top: 4px; white-space: pre-wrap; word-break: break-word;
+                  color: #9ecbff; font-size: 11.5px; }
+
+  .evt { padding: 4px 0; border-bottom: 1px solid #21262d; font-size: 12.5px; }
+  .evt:last-child { border-bottom: none; }
+  .evt .t { color: var(--dim); font-size: 11px; margin-right: 6px; }
+  .evt.escalation { color: var(--yellow); } .evt.repair { color: var(--purple); }
+  .evt.fail { color: var(--red); } .evt.spawn { color: var(--green); }
+  .evt.delegation { color: var(--accent); }
+
+  .task { padding: 6px 0; border-bottom: 1px solid #21262d; font-size: 12.5px; }
+  .task:last-child { border-bottom: none; }
+  .task .st { font-weight: 700; }
+  .task .res { color: var(--dim); margin-top: 2px; font-size: 12px; }
+
+  footer {
+    display: flex; gap: 8px; padding: 10px 16px;
+    background: var(--panel); border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  #taskinput {
+    flex: 1; min-width: 240px; background: #0d1117; color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+    font-size: 14px;
+  }
+  #taskinput:focus { outline: none; border-color: var(--accent); }
+  select {
+    background: #0d1117; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px; font-size: 13px;
+  }
+  .kb { font-size: 12.5px; padding: 3px 0; color: var(--dim);
+        border-bottom: 1px solid #21262d; }
+  .kb:last-child { border-bottom: none; }
+  .chainline { font-size: 12px; padding: 2px 0; }
+  .chainline b { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🐜 La Colonie</h1>
+  <span class="badge" id="mode">…</span>
+  <span class="hstat" id="uptime">—</span>
+  <span class="hstat" id="busstat">—</span>
+  <span class="hstat" id="pend">—</span>
+  <div class="hspacer"></div>
+  <button id="scen" class="primary" title="Bug → réparation Fable → délégation → escalade multi-IA">🎬 Scénario complet</button>
+  <button id="clear">🧹 Vider le fil</button>
+</header>
+
+<main>
+  <div class="col">
+    <div class="panel"><h2>Larbins <span id="nlarbins"></span></h2><div id="larbins"></div></div>
+    <div class="panel"><h2>Providers (IAs)</h2><div id="providers"></div></div>
+    <div class="panel"><h2>Chaînes de fallback</h2><div id="chains"></div></div>
+  </div>
+
+  <div class="col" style="overflow:hidden">
+    <div id="feed"></div>
+  </div>
+
+  <div class="col">
+    <div class="panel"><h2>Tâches (toi)</h2><div id="tasks"><div class="hstat">Aucune tâche — lance-en une en bas 👇</div></div></div>
+    <div class="panel"><h2>Événements du boss</h2><div id="events"><div class="hstat">Rien encore.</div></div></div>
+    <div class="panel"><h2>Mémoire des bugs</h2><div id="kb"><div class="hstat">Vierge.</div></div></div>
+  </div>
+</main>
+
+<footer>
+  <input id="taskinput" placeholder="Donne une tâche à la colonie… (ex : écris une fonction qui valide des SIRET)" autofocus>
+  <select id="role">
+    <option value="coder">coder</option>
+    <option value="reviewer">reviewer</option>
+    <option value="summarizer">summarizer</option>
+    <option value="validator">validator</option>
+    <option value="generic">generic</option>
+  </select>
+  <button class="primary" id="send">Envoyer 🚀</button>
+</footer>
+
+<script>
+"use strict";
+const ICONS = {request:"📥", response:"📤", delegation:"🤝", escalation:"🔁",
+               repair_request:"🩹", repair_done:"✅", error:"🚨", info:"ℹ️"};
+const $ = id => document.getElementById(id);
+const feed = $("feed");
+let sseUp = false;
+
+function color(name) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `hsl(${h}, 70%, 65%)`;
+}
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"]/g,
+    c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+function hhmmss(ts) { return new Date(ts * 1000).toLocaleTimeString("fr-FR"); }
+
+function addMsg(m) {
+  const div = document.createElement("div");
+  div.className = "msg";
+  const icon = ICONS[m.type] || "💬";
+  const payload = m.payload && Object.keys(m.payload).length
+    ? `<details class="mdetails"><summary>payload</summary><pre>${esc(JSON.stringify(m.payload, null, 1))}</pre></details>`
+    : "";
+  div.innerHTML =
+    `<div class="mhead">${icon}
+       <span class="mfrom" style="color:${color(m.from)}">${esc(m.from)}</span>
+       <span>→</span>
+       <span class="mfrom" style="color:${color(m.to)}">${esc(m.to)}</span>
+       <span>${hhmmss(m.ts)}</span>
+     </div>
+     <div class="mbody">${esc((m.body || "").slice(0, 500))}</div>${payload}`;
+  feed.prepend(div);
+  while (feed.children.length > 200) feed.lastChild.remove();
+}
+
+function render(st) {
+  const modeEl = $("mode");
+  modeEl.textContent = st.mode.startsWith("MOCK") ? "Mode démo (mocks)" : "Mode LIVE";
+  modeEl.className = "badge " + (st.mode.startsWith("MOCK") ? "mock" : "live");
+  modeEl.title = "config : " + st.config;
+  $("uptime").textContent = "⏱ " + Math.floor(st.uptime / 60) + " min " + (st.uptime % 60) + " s";
+  $("busstat").textContent = "📨 " + st.bus.total + " msgs";
+  $("pend").textContent = "⏳ " + st.pending + " en cours";
+
+  $("nlarbins").textContent = "(" + st.larbins.length + ")";
+  $("larbins").innerHTML = st.larbins.length ? st.larbins.map(l =>
+    `<div class="larbin">
+       <span class="dot ${l.status}"></span>
+       <span class="lname" style="color:${color(l.name)}">${esc(l.name)}</span>
+       <span class="lmeta">${esc(l.role)} · ${esc(l.provider)}</span>
+       <span class="lmeta">req ${l.requests} · rép ${l.repairs} · v${l.versions}</span>
+     </div>`).join("") : '<div class="hstat">Aucun larbin — lance le scénario 🎬</div>';
+
+  $("providers").innerHTML = st.providers.map(p =>
+    `<div class="prov">
+       <span>${esc(p.name)} <span style="color:var(--dim)">${esc(p.model || "")}</span></span>
+       <span class="${p.errors > 0 ? "ko" : "ok"}">${p.calls}✓ ${p.errors}✗
+         ${p.breaker.includes("OUVERT") ? ' <span class="warn">breaker</span>' : ""}</span>
+     </div>`).join("");
+
+  $("chains").innerHTML = Object.entries(st.chains).map(([cap, chain]) =>
+    `<div class="chainline"><b>${esc(cap)}</b> → ${chain.map(esc).join(" → ")}</div>`).join("");
+
+  $("events").innerHTML = st.events.length ? st.events.map(e => {
+    const m = e.match(/^(\S+) \[(\w+)\] (.*)$/);
+    const cls = m ? m[2] : "";
+    const html = m ? `<span class="t">${m[1]}</span>${esc(m[3])}` : esc(e);
+    return `<div class="evt ${cls}">${html}</div>`;
+  }).join("") : '<div class="hstat">Rien encore.</div>';
+
+  $("tasks").innerHTML = st.tasks.length ? st.tasks.map(t =>
+    `<div class="task">
+       <span class="st ${t.status === "ok" ? "ok" : (t.status === "échec" ? "ko" : "warn")}">
+         ${t.status === "ok" ? "✅" : (t.status === "échec" ? "❌" : "⏳")}</span>
+       <b>${esc(t.larbin)}</b> <span style="color:var(--dim)">(${esc(t.role)})</span><br>
+       ${esc(t.task)}
+       ${t.result ? `<div class="res">${esc(String(t.result).slice(0, 200))}</div>` : ""}
+     </div>`).join("") : '<div class="hstat">Aucune tâche — lance-en une en bas 👇</div>';
+
+  $("kb").innerHTML = st.knowledge.total
+    ? `<div class="hstat">${st.knowledge.total} entrées</div>` +
+      st.knowledge.recent.map(k =>
+        `<div class="kb">${k.type === "bug" ? "🐞" : "🔧"} <b>${esc(k.role)}</b> : ${esc(k.info)}</div>`).join("")
+    : '<div class="hstat">Vierge.</div>';
+
+  $("scen").disabled = st.scenario_running;
+  $("scen").textContent = st.scenario_running ? "🎬 Scénario en cours…" : "🎬 Scénario complet";
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("api/state");
+    if (r.ok) render(await r.json());
+  } catch (e) { /* le serveur redémarrera */ }
+}
+
+function connectSSE() {
+  const es = new EventSource("api/events");
+  es.onmessage = ev => {
+    try {
+      const d = JSON.parse(ev.data);
+      if (d.kind === "msg") addMsg(d.msg);
+      else if (d.kind === "state") render(d.state);
+    } catch (e) { /* ignore */ }
+  };
+  es.onopen = () => { sseUp = true; };
+  es.onerror = () => { sseUp = false; /* reconnexion auto + polling de secours */ };
+}
+
+async function loadHistory() {
+  try {
+    const r = await fetch("api/messages");
+    if (!r.ok) return;
+    const d = await r.json();
+    d.messages.slice(-40).forEach(addMsg);
+  } catch (e) { /* pas grave */ }
+}
+
+async function sendTask() {
+  const input = $("taskinput");
+  const task = input.value.trim();
+  if (!task) return;
+  $("send").disabled = true;
+  try {
+    const r = await fetch("api/task", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({task, role: $("role").value})
+    });
+    const d = await r.json();
+    if (d.ok) input.value = "";
+    else alert(d.error || "échec");
+  } catch (e) { alert("serveur injoignable"); }
+  $("send").disabled = false;
+}
+
+async function runScenario() {
+  $("scen").disabled = true;
+  try {
+    const r = await fetch("api/scenario", {method: "POST"});
+    const d = await r.json();
+    if (!d.ok) { alert(d.error || "impossible"); $("scen").disabled = false; }
+  } catch (e) { alert("serveur injoignable"); $("scen").disabled = false; }
+}
+
+$("send").onclick = sendTask;
+$("taskinput").addEventListener("keydown", e => { if (e.key === "Enter") sendTask(); });
+$("scen").onclick = runScenario;
+$("clear").onclick = () => feed.innerHTML = "";
+
+refresh();
+loadHistory();
+connectSSE();
+setInterval(refresh, 4000);   // secours si SSE coupé par un proxy
+</script>
+</body>
+</html>

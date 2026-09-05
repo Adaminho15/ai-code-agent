@@ -231,5 +231,98 @@ class TestColony(ColonyTestCase):
         self.assertIn("Signe", lb.mission)
 
 
+class TestDashboard(ColonyTestCase):
+    async def _get(self, port, path):
+        rd, wr = await asyncio.open_connection("127.0.0.1", port)
+        wr.write(f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+                 .encode())
+        await wr.drain()
+        raw = b""
+        while True:
+            chunk = await rd.read(4096)
+            if not chunk:
+                break
+            raw += chunk
+        wr.close()
+        return raw
+
+    async def test_dashboard_http(self):
+        """State JSON, page HTML, tâche POST → complétée."""
+        import json as _json
+        from colony.dashboard import Dashboard
+        dash = Dashboard(self.boss, self.bus, self.registry, self.cfg,
+                         self.kb, mode="MOCK (démo)", config_path="test")
+        await dash.start(port=0)
+        try:
+            # page HTML
+            raw = await self._get(dash.port, "/")
+            self.assertIn(b"La Colonie", raw)
+            # state JSON
+            raw = await self._get(dash.port, "/api/state")
+            state = _json.loads(raw.split(b"\r\n\r\n", 1)[1])
+            self.assertIn("larbins", state)
+            self.assertEqual(state["mode"], "MOCK (démo)")
+            # POST /api/task
+            body = _json.dumps({"task": "dis bonjour",
+                                "role": "coder"}).encode()
+            rd, wr = await asyncio.open_connection("127.0.0.1", dash.port)
+            wr.write(b"POST /api/task HTTP/1.1\r\nHost: t\r\n"
+                     b"Content-Type: application/json\r\nContent-Length: "
+                     + str(len(body)).encode()
+                     + b"\r\nConnection: close\r\n\r\n" + body)
+            await wr.drain()
+            raw = b""
+            while True:
+                chunk = await rd.read(4096)
+                if not chunk:
+                    break
+                raw += chunk
+            wr.close()
+            self.assertIn(b'"ok": true', raw)
+            # la tâche aboutit (mock rapide)
+            status = None
+            for _ in range(50):
+                await asyncio.sleep(0.2)
+                st = _json.loads((await self._get(dash.port, "/api/state"))
+                                 .split(b"\r\n\r\n", 1)[1])
+                if st["tasks"] and st["tasks"][0]["status"] != "en cours":
+                    status = st["tasks"][0]["status"]
+                    break
+            self.assertEqual(status, "ok")
+        finally:
+            await dash.stop()
+
+    async def test_dashboard_scenario(self):
+        """Le bouton 🎬 : scénario complet via l'API, colonie saine."""
+        import json as _json
+        from colony.dashboard import Dashboard
+        dash = Dashboard(self.boss, self.bus, self.registry, self.cfg,
+                         self.kb, mode="MOCK (démo)", config_path="test")
+        await dash.start(port=0)
+        try:
+            rd, wr = await asyncio.open_connection("127.0.0.1", dash.port)
+            wr.write(b"POST /api/scenario HTTP/1.1\r\nHost: t\r\n"
+                     b"Content-Length: 0\r\nConnection: close\r\n\r\n")
+            await wr.drain()
+            raw = b""
+            while True:
+                chunk = await rd.read(4096)
+                if not chunk:
+                    break
+                raw += chunk
+            wr.close()
+            self.assertIn(b'"ok": true', raw)
+            for _ in range(80):
+                await asyncio.sleep(0.25)
+                st = _json.loads((await self._get(dash.port, "/api/state"))
+                                 .split(b"\r\n\r\n", 1)[1])
+                if not st["scenario_running"] and st["events"]:
+                    break
+            self.assertFalse(st["scenario_running"])
+            self.assertTrue(any("[repair]" in e for e in st["events"]))
+        finally:
+            await dash.stop()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

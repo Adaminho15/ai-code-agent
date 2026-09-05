@@ -16,6 +16,26 @@ tombe en maintenance.
 
 ---
 
+## 🖥️ Dashboard web live
+
+```bash
+python3 -m colony.cli dashboard            # tes IAs du .env (fallback mocks)
+python3 -m colony.cli dashboard --mock     # mode démo sans aucune clé
+python3 -m colony.cli dashboard --port 8420 --config config.perso.json
+```
+
+Dans le navigateur :
+- **fil de messages temps réel** (SSE + polling de secours) : chaque échange
+  entre larbins, escalades, réparations… en direct et en couleur ;
+- **bouton 🎬 Scénario complet** : rejoue en live le bug → réparation →
+  délégation → escalade multi-IA ;
+- **donne des tâches** à la colonie depuis la barre du bas (rôle au choix) ;
+- panneaux : larbins (statut, IA, réparations), providers (appels, erreurs,
+  breaker), chaînes de fallback, événements du boss, mémoire des bugs.
+
+Zéro dépendance (serveur HTTP asyncio stdlib), interface autonome
+(`colony/static/dashboard.html`).
+
 ## 🎨 Personnalisation (50 questions)
 
 Deux façons de régler TA colonie aux petits oignons :
@@ -216,7 +236,7 @@ exécutions**.
 
 ## 🗺 Roadmap (prochaines étapes)
 
-- [ ] Web UI (dashboard live : larbins, messages, escalades, coûts)
+- [x] ~~Web UI (dashboard live)~~ ✅ `python3 -m colony.cli dashboard`
 - [ ] Tools de « vraie » app de code : éditer des fichiers du repo, git,
       lancer les tests (aujourd'hui les larbins ont un tool JSON générique)
 - [ ] Jules en larbin de code complet (repo GitHub branché)

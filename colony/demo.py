@@ -53,28 +53,16 @@ EMAILS = [
 ]
 
 
-async def run_demo(live: bool = False, config_path: str | None = None) -> int:
-    print(dim("=" * 72))
-    print(dim(f"  DÉMO COLONIE — mode {'LIVE (vraies IAs)' if live else 'MOCK (aucune clé requise)'}"))
-    print(dim("=" * 72))
+async def run_scenario(boss, bus: Bus, live: bool = False):
+    """Lance le scénario complet sur une colonie EXISTANTE.
 
-    cfg = Config(config_path or (default_config_path() if live
-                                 else demo_config_path()))
-    bus = Bus(max_history=cfg.max_history)
-    registry = Registry.from_config(cfg)
-    if not registry.providers:
-        print("❌ Aucun provider disponible — remplis ton .env (voir .env.example)")
-        return 1
-    kb = KnowledgeBase()
-    boss = Boss(registry, bus, cfg, kb)
-    await boss.start()
-
+    (utilisé par la CLI `demo` et par le bouton 🎬 du dashboard)
+    Retourne (requête, réponse | None).
+    """
     human = bus.register("human")
-
-    # 1) Larbin validator avec un tool buggé
     validator = await boss.spawn(
         "validator", tool_code=BUGGY_VALIDATOR,
-        reason="démo : validation d'emails avec tool Python")
+        reason="scénario : validation d'emails avec tool Python")
 
     req = Message(
         bus_mod.REQUEST, frm="human", to=validator.addr, task_id="demo-1",
@@ -93,20 +81,37 @@ async def run_demo(live: bool = False, config_path: str | None = None) -> int:
                         "phrases (valides vs invalides).",
             },
         })
-
-    print()
     await bus.send(req)
 
     timeout = 120 if not live else 900
-    resp = None
-    try:
-        while True:
-            raw = await asyncio.wait_for(human.get(), timeout=timeout)
-            if raw.type == bus_mod.RESPONSE and raw.reply_to == req.id:
-                resp = raw
-                break
-    except asyncio.TimeoutError:
-        print("❌ La démo n'a pas abouti dans le temps imparti.")
+    deadline = asyncio.get_running_loop().time() + timeout
+    while True:
+        left = deadline - asyncio.get_running_loop().time()
+        if left <= 0:
+            return req, None
+        raw = await asyncio.wait_for(human.get(), timeout=left)
+        if raw.type == bus_mod.RESPONSE and raw.reply_to == req.id:
+            return req, raw
+
+
+async def run_demo(live: bool = False, config_path: str | None = None) -> int:
+    print(dim("=" * 72))
+    print(dim(f"  DÉMO COLONIE — mode {'LIVE (vraies IAs)' if live else 'MOCK (aucune clé requise)'}"))
+    print(dim("=" * 72))
+
+    cfg = Config(config_path or (default_config_path() if live
+                                 else demo_config_path()))
+    bus = Bus(max_history=cfg.max_history)
+    registry = Registry.from_config(cfg)
+    if not registry.providers:
+        print("❌ Aucun provider disponible — remplis ton .env (voir .env.example)")
+        return 1
+    kb = KnowledgeBase()
+    boss = Boss(registry, bus, cfg, kb)
+    await boss.start()
+
+    print()
+    _req, resp = await run_scenario(boss, bus, live)
 
     # ------------------------------------------------------------ rapport --
     report = cfg.style.get("report", "normal")

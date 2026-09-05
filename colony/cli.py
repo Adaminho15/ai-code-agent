@@ -42,6 +42,12 @@ def cmd_quiz(args) -> int:
     return run_quiz(quick=args.quick)
 
 
+async def cmd_dashboard(args) -> int:
+    from .dashboard import serve
+    return await serve(config_path=args.config or default_config_path(),
+                       port=args.port, mock=args.mock)
+
+
 async def cmd_doctor(args) -> int:
     cfg, _bus, registry, _boss = _build(args.config)
     print(dim("Santé des providers (petit ping réel) —"))
@@ -131,6 +137,13 @@ def main() -> int:
     r.add_argument("task")
     r.add_argument("--timeout", type=int, default=None)
     r.set_defaults(fn=cmd_run)
+
+    dash = sub.add_parser("dashboard",
+                          help="interface web live (larbins, messages, tâches)")
+    dash.add_argument("--port", type=int, default=8420)
+    dash.add_argument("--mock", action="store_true",
+                      help="force le mode démo sans clé API")
+    dash.set_defaults(fn=cmd_dashboard)
 
     args = parser.parse_args()
     fn = args.fn
