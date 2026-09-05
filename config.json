@@ -1,0 +1,88 @@
+{
+  "settings": {
+    "request_timeout": 60,
+    "watchdog_factor": 4.0,
+    "grace_factor": 4.0,
+    "max_escalations": 2,
+    "max_repairs": 3,
+    "repair_timeout": 240,
+    "sandbox_timeout": 20,
+    "http_timeout": 120,
+    "provider_cooldown": 60,
+    "delegation_validation": "rules",
+    "max_versions": 3
+  },
+  "providers": {
+    "fable": {
+      "kind": "anthropic",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "model": "claude-fable-5-1",
+      "min_interval": 1.0
+    },
+    "openrouter": {
+      "kind": "openai_compat",
+      "preset": "openrouter",
+      "min_interval": 1.0
+    },
+    "gemini": {
+      "kind": "openai_compat",
+      "preset": "gemini",
+      "min_interval": 0.8
+    },
+    "groq": {
+      "kind": "openai_compat",
+      "preset": "groq",
+      "min_interval": 0.8
+    },
+    "mistral": {
+      "kind": "openai_compat",
+      "preset": "mistral",
+      "min_interval": 0.8
+    },
+    "deepseek": {
+      "kind": "openai_compat",
+      "preset": "deepseek",
+      "min_interval": 0.8
+    },
+    "together": {
+      "kind": "openai_compat",
+      "preset": "together",
+      "min_interval": 0.8
+    },
+    "cerebras": {
+      "kind": "openai_compat",
+      "preset": "cerebras",
+      "min_interval": 0.5
+    },
+    "fireworks": {
+      "kind": "openai_compat",
+      "preset": "fireworks",
+      "min_interval": 0.8
+    },
+    "cloudflare": {
+      "kind": "openai_compat",
+      "preset": "cloudflare",
+      "min_interval": 0.8
+    },
+    "openai": {
+      "kind": "openai_compat",
+      "preset": "openai",
+      "min_interval": 0.8
+    },
+    "jules": {
+      "kind": "jules",
+      "api_key_env": "JULES_API_KEY",
+      "http_timeout": 60,
+      "max_wait": 900,
+      "auto_approve": true
+    }
+  },
+  "chains": {
+    "repairer": ["fable", "openrouter", "mistral"],
+    "coder": ["fable", "openrouter", "mistral", "gemini"],
+    "validator": ["fable", "openrouter", "gemini"],
+    "boss": ["openrouter", "gemini"],
+    "chat": ["openrouter", "gemini", "groq", "mistral", "deepseek", "together", "cerebras", "fireworks", "cloudflare", "openai"],
+    "jules-tasks": ["jules"]
+  }
+}

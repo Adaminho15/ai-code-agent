@@ -1,0 +1,27 @@
+{
+  "settings": {
+    "request_timeout": 5,
+    "watchdog_factor": 4.0,
+    "grace_factor": 4.0,
+    "max_escalations": 2,
+    "max_repairs": 3,
+    "repair_timeout": 60,
+    "sandbox_timeout": 8,
+    "http_timeout": 30,
+    "provider_cooldown": 30,
+    "delegation_validation": "rules",
+    "max_versions": 3
+  },
+  "providers": {
+    "mock-good": { "kind": "mock", "behavior": "good" },
+    "mock-flaky": { "kind": "mock", "behavior": "flaky", "fail_first": 5 },
+    "mock-repair": { "kind": "mock", "behavior": "good" }
+  },
+  "chains": {
+    "validator": ["mock-good"],
+    "coder": ["mock-good"],
+    "chat": ["mock-flaky", "mock-good"],
+    "repairer": ["mock-repair", "mock-good"],
+    "boss": ["mock-good"]
+  }
+}
