@@ -1,0 +1,157 @@
+{
+  "settings": {
+    "request_timeout": 120,
+    "watchdog_factor": 8.0,
+    "grace_factor": 6.0,
+    "max_escalations": 3,
+    "max_repairs": 3,
+    "repair_timeout": 240,
+    "sandbox_timeout": 60,
+    "http_timeout": 180,
+    "provider_cooldown": 300,
+    "delegation_validation": "llm",
+    "max_versions": 3,
+    "default_priority": 2,
+    "max_history": 10000,
+    "breaker_threshold": 3,
+    "rollback_policy": "always",
+    "repair_temperature": 0.0,
+    "candidate_test_mode": "basic",
+    "knowledge_scope": "shared",
+    "delegation_reuse": "reuse",
+    "conversation_memory": 30
+  },
+  "providers": {
+    "fable": {
+      "kind": "anthropic",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "model": "claude-fable-5-1",
+      "min_interval": 2.0
+    },
+    "openrouter": {
+      "kind": "openai_compat",
+      "preset": "openrouter",
+      "min_interval": 2.0
+    },
+    "gemini": {
+      "kind": "openai_compat",
+      "preset": "gemini",
+      "min_interval": 2.0
+    },
+    "groq": {
+      "kind": "openai_compat",
+      "preset": "groq",
+      "min_interval": 2.0
+    },
+    "mistral": {
+      "kind": "openai_compat",
+      "preset": "mistral",
+      "min_interval": 2.0
+    },
+    "deepseek": {
+      "kind": "openai_compat",
+      "preset": "deepseek",
+      "min_interval": 2.0
+    },
+    "together": {
+      "kind": "openai_compat",
+      "preset": "together",
+      "min_interval": 2.0
+    },
+    "cerebras": {
+      "kind": "openai_compat",
+      "preset": "cerebras",
+      "min_interval": 2.0
+    },
+    "fireworks": {
+      "kind": "openai_compat",
+      "preset": "fireworks",
+      "min_interval": 2.0
+    },
+    "cloudflare": {
+      "kind": "openai_compat",
+      "preset": "cloudflare",
+      "min_interval": 2.0
+    },
+    "openai": {
+      "kind": "openai_compat",
+      "preset": "openai",
+      "min_interval": 2.0
+    },
+    "jules": {
+      "kind": "jules",
+      "api_key_env": "JULES_API_KEY",
+      "http_timeout": 60,
+      "max_wait": 900,
+      "auto_approve": true,
+      "min_interval": 2.0
+    }
+  },
+  "chains": {
+    "repairer": [
+      "fable",
+      "openrouter",
+      "mistral"
+    ],
+    "coder": [
+      "fable",
+      "openrouter",
+      "mistral",
+      "gemini"
+    ],
+    "validator": [
+      "fable",
+      "openrouter",
+      "mistral",
+      "gemini"
+    ],
+    "boss": [
+      "groq",
+      "openrouter"
+    ],
+    "chat": [
+      "groq",
+      "openrouter",
+      "gemini",
+      "mistral",
+      "deepseek",
+      "together",
+      "cerebras",
+      "fireworks",
+      "cloudflare",
+      "openai"
+    ],
+    "jules-tasks": [
+      "jules"
+    ]
+  },
+  "style": {
+    "tone": "direct",
+    "language": "fr",
+    "output_format": "text",
+    "signature": "name",
+    "naming": "metier",
+    "boss_tone": "general",
+    "verbosity": "minimal",
+    "report": "normal"
+  },
+  "wishes": {
+    "doctor_on_start": true,
+    "rate_limit_policy": "switch",
+    "jules_recovery": "auto",
+    "health_watch": "hourly",
+    "cost_aware": "free_first",
+    "human_fallback": "fail",
+    "cycle_depth": "depth2",
+    "delegation_depth": 99,
+    "boss_delegates_during_repair": true,
+    "sandbox_network": "allow",
+    "sandbox_fs": "data",
+    "sandbox_imports": "whitelist",
+    "custom_provider": true,
+    "jules_role": "dedicated",
+    "cost_tracking": "calls",
+    "alerts": "console",
+    "dashboard": true
+  }
+}
