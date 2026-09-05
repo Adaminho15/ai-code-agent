@@ -13,15 +13,41 @@
     "max_versions": 3
   },
   "providers": {
-    "mock-good": { "kind": "mock", "behavior": "good" },
-    "mock-flaky": { "kind": "mock", "behavior": "flaky", "fail_first": 5 },
-    "mock-repair": { "kind": "mock", "behavior": "good" }
+    "mock-good": {
+      "kind": "mock",
+      "behavior": "good"
+    },
+    "mock-flaky": {
+      "kind": "mock",
+      "behavior": "flaky",
+      "fail_first": 5
+    },
+    "mock-repair": {
+      "kind": "mock",
+      "behavior": "good"
+    },
+    "local": {
+      "kind": "openai_compat",
+      "preset": "ollama"
+    }
   },
   "chains": {
-    "validator": ["mock-good"],
-    "coder": ["mock-good"],
-    "chat": ["mock-flaky", "mock-good"],
-    "repairer": ["mock-repair", "mock-good"],
-    "boss": ["mock-good"]
+    "validator": [
+      "mock-good"
+    ],
+    "coder": [
+      "mock-good"
+    ],
+    "chat": [
+      "mock-flaky",
+      "mock-good"
+    ],
+    "repairer": [
+      "mock-repair",
+      "mock-good"
+    ],
+    "boss": [
+      "mock-good"
+    ]
   }
 }
