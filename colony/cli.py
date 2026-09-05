@@ -1,9 +1,12 @@
 """CLI de la colonie.
 
 Commandes :
-  python -m colony.cli demo [--live]   # démo complète (mock par défaut)
-  python -m colony.cli doctor          # santé de toutes les IAs du .env
-  python -m colony.cli run "tâche"     # donne une tâche à un larbin codeur
+  python -m colony.cli quiz               # 50 questions → config.perso.json
+  python -m colony.cli demo [--live]      # démo complète (mock par défaut)
+  python -m colony.cli doctor             # santé de toutes les IAs du .env
+  python -m colony.cli run "tâche"        # donne une tâche à un larbin codeur
+
+Option globale : --config config.perso.json (ta config personnalisée du quiz)
 """
 from __future__ import annotations
 
@@ -15,26 +18,32 @@ from . import bus as bus_mod
 from .boss import Boss
 from .bus import Bus, Message
 from .config import Config, default_config_path
-from .demo import run_demo
 from .knowledge import KnowledgeBase
 from .log import dim
 from .providers.registry import Registry
 
 
-def _build():
-    cfg = Config(default_config_path())
-    bus = Bus()
+def _build(config_path: str | None = None):
+    cfg = Config(config_path or default_config_path())
+    bus = Bus(max_history=cfg.max_history)
     registry = Registry.from_config(cfg)
     boss = Boss(registry, bus, cfg, KnowledgeBase())
     return cfg, bus, registry, boss
 
 
 async def cmd_demo(args) -> int:
-    return await run_demo(live=args.live)
+    from .demo import run_demo
+    return await run_demo(live=args.live,
+                          config_path=args.config or default_config_path())
+
+
+def cmd_quiz(args) -> int:
+    from .quiz import run_quiz
+    return run_quiz(quick=args.quick)
 
 
 async def cmd_doctor(args) -> int:
-    cfg, _bus, registry, _boss = _build()
+    cfg, _bus, registry, _boss = _build(args.config)
     print(dim("Santé des providers (petit ping réel) —"))
     print()
     if not registry.providers:
@@ -64,7 +73,7 @@ async def cmd_doctor(args) -> int:
 
 
 async def cmd_run(args) -> int:
-    cfg, bus, registry, boss = _build()
+    cfg, bus, registry, boss = _build(args.config)
     if not registry.providers:
         print("❌ Aucun provider — remplis .env")
         return 1
@@ -99,12 +108,21 @@ async def cmd_run(args) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="colony")
+    parser.add_argument("--config", default=None,
+                        help="chemin d'un config.json personnalisé "
+                             "(ex : config.perso.json du quiz)")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     d = sub.add_parser("demo", help="démo complète (mock ou --live)")
     d.add_argument("--live", action="store_true",
                    help="utilise les vraies IAs du .env")
     d.set_defaults(fn=cmd_demo)
+
+    q = sub.add_parser("quiz",
+                       help="50 questions pour générer ta config perso")
+    q.add_argument("--quick", action="store_true",
+                   help="prend toutes les réponses conseillées ✨")
+    q.set_defaults(fn=cmd_quiz)
 
     doc = sub.add_parser("doctor", help="santé des providers")
     doc.set_defaults(fn=cmd_doctor)
@@ -115,8 +133,11 @@ def main() -> int:
     r.set_defaults(fn=cmd_run)
 
     args = parser.parse_args()
+    fn = args.fn
     try:
-        return asyncio.run(args.fn(args))
+        if asyncio.iscoroutinefunction(fn):
+            return asyncio.run(fn(args))
+        return fn(args)
     except KeyboardInterrupt:
         return 130
 

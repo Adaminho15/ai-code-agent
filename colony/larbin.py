@@ -139,7 +139,7 @@ class Larbin:
         """
         timeout = timeout or self.cfg.request_timeout
         m = Message(bus_mod.REQUEST, frm=self.addr, to=to, body=body,
-                    payload=payload or {})
+                    payload=payload or {}, priority=self.cfg.default_priority)
         if delegation_role:
             d = Message(bus_mod.DELEGATION, frm=self.addr, to=BOSS,
                         payload={"role": delegation_role, "request": m.to_dict()})
@@ -230,7 +230,7 @@ class Larbin:
             user += ("\n\nDonnées (JSON) :\n"
                      + json.dumps(req.payload, ensure_ascii=False)[:3000])
         self.history.append({"role": "user", "content": user})
-        hist = self.history[-12:]
+        hist = self.history[-self.cfg.conversation_memory:]
         if len(hist) > 1:
             prompt = "\n\n".join(f"[{h['role']}]\n{h['content']}" for h in hist)
         else:
@@ -261,7 +261,8 @@ class Larbin:
                     "🩹")
                 # 1) rollback d'abord : peut-être que la version précédente
                 #    marchait (le nouveau code a introduit le bug)
-                if len(self.versions) > 1:
+                if (self.cfg.rollback_policy == "always"
+                        and len(self.versions) > 1):
                     self.rollback()
                     try:
                         result = await run_tool(self.tool_code, payload,

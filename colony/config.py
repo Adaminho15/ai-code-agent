@@ -47,6 +47,24 @@ DEFAULT_SETTINGS = {
     "max_escalations": 2,
     # Nb max de tentatives de réparation (self-healing) par larbin et par tâche.
     "max_repairs": 3,
+    # Politique de rollback : "always" (essayer l'ancien code d'abord) ou "never".
+    "rollback_policy": "always",
+    # Température du Réparateur (0.0 = chirurgical).
+    "repair_temperature": 0.0,
+    # Tests des candidats réparés : "basic" ou "paranoid" (+ cas limites).
+    "candidate_test_mode": "basic",
+    # Mémoire globale des bugs : "shared" | "role" | "off".
+    "knowledge_scope": "role",
+    # Délégation : "reuse" (réutiliser un larbin idle) ou "new".
+    "delegation_reuse": "reuse",
+    # Priorité par défaut des messages (0=urgent, 1=normal, 2=arrière-plan).
+    "default_priority": 1,
+    # Tours de conversation gardés en mémoire par larbin.
+    "conversation_memory": 12,
+    # Messages gardés dans l'historique du bus.
+    "max_history": 2000,
+    # Seuil du circuit breaker (échecs consécutifs avant cooldown).
+    "breaker_threshold": 3,
     # Temps max accordé au Larbin Réparateur (Fable 5.1) pour recoder.
     "repair_timeout": 180,
     # Timeout d'exécution du code d'un larbin dans le sandbox.
@@ -82,6 +100,12 @@ class Config:
     def chains(self) -> dict[str, list[str]]:
         """capability -> liste ordonnée de providers (fallback)."""
         return self.data.get("chains", {})
+
+    # -- personnalisation ----------------------------------------------------
+    @property
+    def style(self) -> dict:
+        """Préférences de personnalisation (quiz / QCM)."""
+        return self.data.get("style", {})
 
     # -- réglages -----------------------------------------------------------
     def __getattr__(self, name: str):

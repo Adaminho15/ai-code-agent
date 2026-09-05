@@ -61,7 +61,7 @@ class RateLimiter:
 
 
 class CircuitBreaker:
-    """3 échecs consécutifs → circuit ouvert → provider ignoré (cooldown)."""
+    """N échecs consécutifs → circuit ouvert → provider ignoré (cooldown)."""
 
     def __init__(self, threshold: int = 3, cooldown: float = 60.0):
         self.threshold = threshold
@@ -95,12 +95,14 @@ class Provider:
     kind = "base"
 
     def __init__(self, name: str, model: str = "", min_interval: float = 0.5,
-                 http_timeout: float = 90, cooldown: float = 60, **_ignored):
+                 http_timeout: float = 90, cooldown: float = 60,
+                 breaker_threshold: int = 3, **_ignored):
         self.name = name
         self.model = model
         self.http_timeout = http_timeout
         self.limiter = RateLimiter(min_interval)
-        self.breaker = CircuitBreaker(cooldown=cooldown)
+        self.breaker = CircuitBreaker(threshold=breaker_threshold,
+                                      cooldown=cooldown)
         self.calls = 0
         self.errors = 0
         self.last_error = ""

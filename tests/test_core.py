@@ -205,5 +205,31 @@ class TestColony(ColonyTestCase):
         self.assertIn("cycle", why)
 
 
+    async def test_nommage_prenoms_unique(self):
+        """Le nommage 'prénoms' ne doit JAMAIS créer de collision d'adresse."""
+        self.cfg.data["style"] = {"naming": "prenoms"}
+        a = await self.boss.spawn("validator")
+        b = await self.boss.spawn("summarizer")
+        c = await self.boss.spawn("summarizer")
+        names = {a.name, b.name, c.name}
+        addrs = {a.addr, b.addr, c.addr}
+        self.assertEqual(len(names), 3)
+        self.assertEqual(len(addrs), 3)
+        self.assertNotIn(a.name, (b.name, c.name))
+        # et le style 'metier' par défaut reste role-N
+        self.cfg.data["style"] = {}
+        d = await self.boss.spawn("coder")
+        self.assertTrue(d.name.startswith("coder-"))
+
+    async def test_mission_avec_style(self):
+        """La personnalité (QCM) est bien injectée dans la mission."""
+        self.cfg.data["style"] = {"tone": "direct", "language": "fr",
+                                  "signature": "name"}
+        lb = await self.boss.spawn("coder")
+        self.assertIn("directe et concise", lb.mission)
+        self.assertIn("français", lb.mission)
+        self.assertIn("Signe", lb.mission)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

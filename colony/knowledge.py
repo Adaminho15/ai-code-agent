@@ -66,11 +66,16 @@ class KnowledgeBase:
     def for_role(self, role: str, limit: int = 8) -> list[dict]:
         return [e for e in self.entries if e.get("role") == role][-limit:]
 
-    def prompt_context(self, role: str, limit: int = 8) -> str:
-        """Historique formaté pour injection dans le prompt du Réparateur."""
-        entries = self.for_role(role, limit)
+    def prompt_context(self, role: str | None = None,
+                       limit: int = 8) -> str:
+        """Historique formaté pour injection dans le prompt du Réparateur.
+
+        role=None → mémoire PARTAGÉE (toute la colonie).
+        """
+        entries = (self.entries if role is None
+                   else self.for_role(role))[-limit:]
         if not entries:
-            return "(aucun bug connu pour ce rôle — premier incident)"
+            return "(aucun bug connu — premier incident)"
         lines = []
         for e in entries:
             if e["type"] == "bug":

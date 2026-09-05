@@ -34,12 +34,18 @@ class Registry:
     # ------------------------------------------------------------- build ---
     @classmethod
     def from_config(cls, cfg) -> "Registry":
+        defaults = dict(
+            min_interval=0.6,
+            http_timeout=cfg.http_timeout,
+            cooldown=cfg.provider_cooldown,
+            breaker_threshold=cfg.breaker_threshold,
+        )
         providers: dict[str, Provider] = {}
         for name, spec in cfg.providers.items():
             spec = dict(spec)
             kind = spec.pop("kind", "openai_compat")
             try:
-                p = cls._build_one(name, kind, spec)
+                p = cls._build_one(name, kind, spec, defaults)
             except Exception as e:  # noqa: BLE001
                 log("registry", f"⚠️ provider '{name}' désactivé : {e}", "🔌")
                 continue
@@ -50,23 +56,28 @@ class Registry:
         return cls(providers, dict(cfg.chains))
 
     @classmethod
-    def _build_one(cls, name: str, kind: str, spec: dict) -> Provider | None:
+    def _build_one(cls, name: str, kind: str, spec: dict,
+                   defaults: dict) -> Provider | None:
         if kind == "mock":
-            return MockProvider(name, **spec)
+            return MockProvider(name, **{**defaults, **spec})
 
         if kind == "anthropic":
             key_env = spec.pop("api_key_env", "ANTHROPIC_API_KEY")
             key = os.environ.get(key_env, "")
             if not key:
                 raise RuntimeError(f"clé {key_env} absente du .env")
-            return AnthropicProvider(name, api_key=key, **spec)
+            kw = dict(defaults)
+            kw.update({k: v for k, v in spec.items() if k in defaults})
+            return AnthropicProvider(name, api_key=key, **kw)
 
         if kind == "jules":
             key_env = spec.pop("api_key_env", "JULES_API_KEY")
             key = os.environ.get(key_env, "")
             if not key:
                 raise RuntimeError(f"clé {key_env} absente du .env")
-            return JulesProvider(name, api_key=key, **spec)
+            kw = dict(defaults)
+            kw.update({k: v for k, v in spec.items() if k in defaults})
+            return JulesProvider(name, api_key=key, **kw)
 
         # openai_compat (par défaut)
         preset = PRESETS.get(spec.pop("preset", ""), {})
@@ -87,8 +98,10 @@ class Registry:
         spec.pop("model", None)
         spec.pop("base_url", None)
         spec.pop("extra_headers", None)
+        kw = dict(defaults)
+        kw.update({k: v for k, v in spec.items() if k in defaults})
         return OpenAICompatProvider(
-            name, base_url=base_url, api_key=api_key, model=model, **spec)
+            name, base_url=base_url, api_key=api_key, model=model, **kw)
 
     # -------------------------------------------------------------- picks ---
     def pick(self, capability: str,

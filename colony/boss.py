@@ -53,6 +53,55 @@ ROLE_TEMPLATES: dict[str, dict] = {
     },
 }
 
+# Styles de nommage (QCM Q5)
+NAME_POOLS: dict[str, list[str]] = {
+    "prenoms": ["alfred", "jeeves", "edmund", "sebastian", "remy", "igor",
+                "basile", "octave", "prosper", "gaspard"],
+    "callsigns": ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot",
+                  "golf", "hotel", "india", "juliett"],
+}
+
+# Tons des larbins et du boss (QCM Q1/Q7)
+TONES: dict[str, str] = {
+    "direct": "Réponds de façon directe et concise (1 à 3 phrases), sans blabla.",
+    "chatty": "Tu es bavard et sympathique : explique brièvement ton raisonnement "
+              "et ajoute une remarque utile.",
+    "formel": "Tu t'exprimes de façon polie et formelle, comme dans un rapport.",
+    "militaire": "Tu réponds sur un ton militaire : phrases très courtes, "
+                 "précises, efficaces.",
+}
+LANGS: dict[str, str] = {
+    "fr": "Tu réponds toujours en français.",
+    "en": "Always answer in English.",
+    "auto": "Réponds dans la langue de la demande.",
+}
+OUTPUT_FORMATS: dict[str, str] = {
+    "text": "Réponds en texte libre lisible (pas de JSON sauf demande explicite).",
+    "json": "Quand c'est possible, structure ta réponse en JSON valide.",
+    "auto": "Pour un humain : texte libre. Pour un autre larbin : JSON valide "
+            "si tu peux.",
+}
+
+
+def style_mission(base_mission: str, style: dict, larbin_name: str) -> str:
+    """Ajoute la personnalité (QCM) à la mission de base d'un larbin."""
+    parts = [base_mission]
+    tone = style.get("tone", "")
+    if tone in TONES:
+        parts.append(TONES[tone])
+    lang = style.get("language", "")
+    if lang in LANGS:
+        parts.append(LANGS[lang])
+    fmt = style.get("output_format", "")
+    if fmt in OUTPUT_FORMATS:
+        parts.append(OUTPUT_FORMATS[fmt])
+    sig = style.get("signature", "none")
+    if sig == "name":
+        parts.append(f"Signe chacune de tes réponses par « — {larbin_name} ».")
+    elif sig == "emoji":
+        parts.append("Termine chaque réponse par un emoji qui reflète ton humeur.")
+    return " ".join(parts)
+
 
 class Boss:
     def __init__(self, registry, bus: Bus, cfg: Config,
@@ -67,6 +116,7 @@ class Boss:
         self.pending: dict[str, dict] = {}
         self.repair_queue: asyncio.PriorityQueue = asyncio.PriorityQueue()
         self._seq = itertools.count()
+        self._pool_seq = itertools.count(1)   # noms uniques (quiz Q5)
         self._spawn_count: dict[str, int] = {}
         self._active_delegations: set[tuple[str, str]] = set()
         self.events: list[str] = []   # journal des événements clés
@@ -113,9 +163,24 @@ class Boss:
                 f"(exclus : {sorted(exclude) or 'aucun'})")
         n = self._spawn_count.get(role, 0) + 1
         self._spawn_count[role] = n
-        name = f"{role}-{n}"
+        naming = self.cfg.style.get("naming", "metier")
+        pool = NAME_POOLS.get(naming)
+        if pool:
+            # compteur GLOBAL : chaque larbin né prend le prénom suivant,
+            # quel que soit son rôle (sinon 2 rôles → même nom → collision
+            # d'adresse sur le bus !)
+            g = next(self._pool_seq)
+            name = f"{pool[(g - 1) % len(pool)]}-{g}"
+        else:
+            name = f"{role}-{n}"
+        base, i = name, 2
+        while f"larbin:{name}" in self.larbins:
+            name = f"{base}-{i}"
+            i += 1
         lb = Larbin(name=name, role=role, capability=cap,
-                    mission=mission or tpl["mission"], provider=provider,
+                    mission=mission or style_mission(tpl["mission"],
+                                                     self.cfg.style, name),
+                    provider=provider,
                     bus=self.bus, config=self.cfg, tool_code=tool_code,
                     expected_seconds=expected_seconds)
         self.larbins[lb.addr] = lb
@@ -151,7 +216,8 @@ class Boss:
         elif msg.type == bus_mod.REPAIR_REQUEST and msg.to == BOSS:
             await self.repair_queue.put((msg.priority, next(self._seq), msg))
         elif msg.type == bus_mod.INFO:
-            log("boss", f"👁️ {msg.frm} : {msg.body[:110]}", "👁️")
+            if self.cfg.style.get("verbosity", "normal") != "minimal":
+                log("boss", f"👁️ {msg.frm} : {msg.body[:110]}", "👁️")
 
     # ------------------------------------------------------------ tracking --
     def _deadline_for(self, req: Message) -> float:
@@ -278,10 +344,11 @@ class Boss:
             return
         # cible : un larbin existant du même rôle et disponible, sinon création
         target = None
-        for lb in self.larbins.values():
-            if lb.role == role and lb.status == "idle":
-                target = lb
-                break
+        if self.cfg.delegation_reuse == "reuse":
+            for lb in self.larbins.values():
+                if lb.role == role and lb.status == "idle":
+                    target = lb
+                    break
         if target is None:
             target = await self.spawn(role, reason=f"délégation de {msg.frm}")
         pair = (self._role_of(msg.frm), role)

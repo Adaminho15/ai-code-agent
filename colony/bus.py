@@ -61,11 +61,11 @@ class Message:
 class Bus:
     """Boîtes aux lettres + observateurs (le boss observe tout)."""
 
-    def __init__(self):
+    def __init__(self, max_history: int = 2000):
         self._queues: dict[str, asyncio.Queue] = {}
         self._observers: list[asyncio.Queue] = []
         self.history: list[Message] = []          # pour le dashboard / rapport
-        self.max_history = 2000
+        self.max_history = max_history
 
     # ------------------------------------------------------------------ API
     def register(self, address: str) -> asyncio.Queue:

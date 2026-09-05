@@ -53,13 +53,14 @@ EMAILS = [
 ]
 
 
-async def run_demo(live: bool = False) -> int:
+async def run_demo(live: bool = False, config_path: str | None = None) -> int:
     print(dim("=" * 72))
     print(dim(f"  DÉMO COLONIE — mode {'LIVE (vraies IAs)' if live else 'MOCK (aucune clé requise)'}"))
     print(dim("=" * 72))
 
-    cfg = Config(default_config_path() if live else demo_config_path())
-    bus = Bus()
+    cfg = Config(config_path or (default_config_path() if live
+                                 else demo_config_path()))
+    bus = Bus(max_history=cfg.max_history)
     registry = Registry.from_config(cfg)
     if not registry.providers:
         print("❌ Aucun provider disponible — remplis ton .env (voir .env.example)")
@@ -108,6 +109,7 @@ async def run_demo(live: bool = False) -> int:
         print("❌ La démo n'a pas abouti dans le temps imparti.")
 
     # ------------------------------------------------------------ rapport --
+    report = cfg.style.get("report", "normal")
     print()
     print(dim("=" * 72))
     print("  RAPPORT FINAL")
@@ -130,6 +132,10 @@ async def run_demo(live: bool = False) -> int:
         if status != "ok":
             print(f"Raison : {resp.payload.get('reason', '?')}")
 
+    if report == "court":
+        await boss.stop()
+        return 0 if resp is not None else 1
+
     print("\n— Événements du boss —")
     for e in boss.events:
         print(f"  {e}")
@@ -138,13 +144,14 @@ async def run_demo(live: bool = False) -> int:
         print(f"  {lb.name:<16} rôle={lb.role:<12} IA={lb.provider.name:<14} "
               f"statut={lb.status:<10} versions_code={len(lb.versions)} "
               f"req={lb.stats['requests']} réparations={lb.stats['repairs']}")
-    print("\n— Providers —")
-    for h in registry.healths():
-        print(f"  {h['name']:<14} {h['kind']:<14} calls={h['calls']:<3} "
-              f"errors={h['errors']:<3} breaker={h['breaker']}")
-    print(f"\n— Bus : {bus.stats()} — "
-          f"{len(kb.entries)} entrées en mémoire globale "
-          f"(data/knowledge.json) —")
+    if report == "detaille":
+        print("\n— Providers —")
+        for h in registry.healths():
+            print(f"  {h['name']:<14} {h['kind']:<14} calls={h['calls']:<3} "
+                  f"errors={h['errors']:<3} breaker={h['breaker']}")
+        print(f"\n— Bus : {bus.stats()} — "
+              f"{len(kb.entries)} entrées en mémoire globale "
+              f"(data/knowledge.json) —")
 
     await boss.stop()
     return 0 if resp is not None else 1

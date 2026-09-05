@@ -49,11 +49,17 @@ def _color_for(addr: str) -> str:
 
 def log(agent: str, text: str, icon: str = "💬") -> None:
     """Affiche une ligne de log colorée + l'écrit dans colony.log."""
-    line = (
-        f"{_DIM}[{datetime.now().strftime('%H:%M:%S')}]{_RESET} "
-        f"{icon} {_BOLD}{_color_for(agent)}{agent}{_RESET}: {text}"
-    )
-    print(line, flush=True)
+    if os.environ.get("COLONY_NO_EMOJI") == "1":
+        icon = "·"
+    if os.environ.get("COLONY_MONO") == "1":
+        line = f"[{datetime.now().strftime('%H:%M:%S')}] {icon} {agent}: {text}"
+        print(line, flush=True)
+    else:
+        line = (
+            f"{_DIM}[{datetime.now().strftime('%H:%M:%S')}]{_RESET} "
+            f"{icon} {_BOLD}{_color_for(agent)}{agent}{_RESET}: {text}"
+        )
+        print(line, flush=True)
     f = _ensure_logfile()
     if f:
         f.write(

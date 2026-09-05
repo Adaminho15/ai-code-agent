@@ -16,6 +16,29 @@ tombe en maintenance.
 
 ---
 
+## 🎨 Personnalisation (50 questions)
+
+Deux façons de régler TA colonie aux petits oignons :
+
+1. **Le quiz interactif** — `python3 -m colony.cli quiz`
+   50 questions (ton des larbins, langue, nommage, timeouts, self-healing,
+   chaînes d'IA...) → génère `config.perso.json` tout seul :
+   ```bash
+   python3 -m colony.cli quiz             # guidé (Entrée = conseil ✨)
+   python3 -m colony.cli quiz --quick     # toutes les réponses conseillées
+   python3 -m colony.cli --config config.perso.json demo
+   ```
+2. **Le QCM papier** — `docs/QCM_LARBINS.md` : les mêmes 50 questions avec
+   explications ; réponds dans le chat ou coche le fichier.
+
+Ce qui est personnalisable **directement** (câblé) : ton des larbins, langue,
+format de réponse, signature, nommage (métier-N / prénoms / callsigns),
+mémoire de conversation, ton du boss, verbosité, emojis, couleurs, rapport
+final, tous les timeouts, escalades, breaker, rollback, température du
+Réparateur, tests candidats, mémoire des bugs (partagée/par rôle/off),
+réutilisation des larbins inactifs, ordre des chaînes d'IA... Les réponses
+non câblées sont notées dans `wishes` (roadmap).
+
 ## ⚡ Démarrage express
 
 ```bash

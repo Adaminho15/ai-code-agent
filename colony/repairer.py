@@ -43,9 +43,11 @@ class Repairer:
     async def fix(self, larbin_role: str, code: str, error: str,
                   detail: str, test_payload: dict) -> dict:
         """Retourne {"ok": bool, "code": str?, "reason": str?}."""
-        # 1) On enregistre le bug dans la mémoire globale
-        self.knowledge.record_bug(larbin_role, error, detail,
-                                  code_snippet=code)
+        scope = self.cfg.knowledge_scope
+        # 1) On enregistre le bug dans la mémoire globale (sauf si OFF)
+        if scope != "off":
+            self.knowledge.record_bug(larbin_role, error, detail,
+                                      code_snippet=code)
 
         # 2) Choix de l'IA réparatrice (Fable 5.1 en tête de chaîne)
         provider = (self.registry.pick("repairer")
@@ -54,7 +56,12 @@ class Repairer:
             return {"ok": False,
                     "reason": "aucune IA disponible pour réparer"}
 
-        history = self.knowledge.prompt_context(larbin_role)
+        if scope == "off":
+            history = "(mémoire désactivée par config)"
+        elif scope == "shared":
+            history = self.knowledge.prompt_context(None)   # toute la colonie
+        else:
+            history = self.knowledge.prompt_context(larbin_role)
         prompt = f"""# Larbin à réparer (rôle : {larbin_role})
 
 ## Code qui a planté
@@ -79,7 +86,8 @@ Corrige le code. Réponds UNIQUEMENT par le bloc ```python``` final."""
                         f"({provider.model}) avec {len(self.knowledge.for_role(larbin_role))} "
                         f"entrées de mémoire...", "🔧")
         raw = await provider.chat(REPAIR_SYSTEM, prompt,
-                                  max_tokens=2000, temperature=0.0)
+                                  max_tokens=2000,
+                                  temperature=self.cfg.repair_temperature)
         new_code = extract_code_block(raw)
         if not new_code or "def handle" not in new_code:
             self.knowledge.record_fix(
@@ -91,6 +99,9 @@ Corrige le code. Réponds UNIQUEMENT par le bloc ```python``` final."""
         # 3) Test sandbox sur le payload original + cas limites
         payloads = [test_payload if isinstance(test_payload, dict) else {},
                     {}]
+        if self.cfg.candidate_test_mode == "paranoid":
+            payloads += [{"edge": True, "items": []},
+                         {"x": ["", 0, None]}]
         ok, reason = await test_candidate(new_code, payloads,
                                           timeout=self.cfg.sandbox_timeout)
         if not ok:
