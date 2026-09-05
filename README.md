@@ -161,6 +161,24 @@ Providers natifs (`kind`) :
 | `jules` | Google Jules | sessions REST, auto-approve du plan, polling ⚠️ expérimental |
 | `mock` | tests & démo | `good` / `flaky` / `slow` / `down` |
 
+### 🦙 IA locale (Ollama, LM Studio, llama.cpp) — sans clé
+
+Le provider **`local`** est déjà dans `config.json` (presets `ollama`,
+`lmstudio`, `llamacpp`). Aucune clé à fournir : il détecte **tout seul** le
+premier modèle installé via l'API Ollama.
+
+```bash
+# Installe Ollama → https://ollama.com  puis :
+ollama pull qwen2.5-coder:7b      # bon codeur local (ou llama3.1:8b, mistral:7b...)
+python3 -m colony.cli doctor      # doit afficher : ✅ local  qwen2.5-coder:7b
+```
+
+- Placé en **fin de chaîne** par défaut = planche de secours quand TOUT le
+  cloud est mort. Mets-le en premier dans `chains` si tu veux du 100 % local
+  (gratuit et illimité).
+- Pour LM Studio : `"preset": "lmstudio"` (port 1234), llama.cpp :
+  `"llamacpp"` (port 8080).
+
 Les **chaînes** (`chains`) définissent l'ordre de fallback par capacité —
 c'est ce qui fait que « si Jules/l'IA X est en maintenance, on en recrée un
 sur une autre IA » :

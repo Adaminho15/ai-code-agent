@@ -324,5 +324,70 @@ class TestDashboard(ColonyTestCase):
             await dash.stop()
 
 
+class TestLocalProvider(unittest.IsolatedAsyncioTestCase):
+    """IA locale (Ollama & co) : sans clé + endpoint OpenAI-compat."""
+
+    async def _stub_server(self):
+        """Faux serveur local style Ollama (OpenAI-compat + /api/tags)."""
+        import json as _json
+
+        async def handler(reader, writer):
+            try:
+                line = await reader.readline()
+                parts = line.decode().split()
+                path = parts[1] if len(parts) > 1 else "/"
+                while True:
+                    h = await reader.readline()
+                    if h in (b"\r\n", b"\n", b""):
+                        break
+                if path == "/api/tags":
+                    body = {"models": [{"name": "qwen2.5-coder:7b"}]}
+                else:
+                    body = {"choices": [{"message": {
+                        "content": "pong local"}}]}
+                data = _json.dumps(body).encode()
+                writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: "
+                             b"application/json\r\nContent-Length: "
+                             + str(len(data)).encode()
+                             + b"\r\nConnection: close\r\n\r\n" + data)
+                await writer.drain()
+            except Exception:  # noqa: BLE001
+                pass
+            finally:
+                writer.close()
+        return await asyncio.start_server(handler, "127.0.0.1", 0)
+
+    async def test_local_sans_cle(self):
+        import colony.config as c
+        import colony.providers.registry as reg
+        srv = await self._stub_server()
+        port = srv.sockets[0].getsockname()[1]
+        try:
+            cfg = c.Config.__new__(c.Config)
+            cfg.data = {
+                "settings": {},
+                "providers": {
+                    "local-test": {
+                        "kind": "openai_compat",
+                        "base_url": f"http://127.0.0.1:{port}/v1",
+                        "keyless": True,
+                    },
+                },
+                "chains": {"chat": ["local-test"]},
+            }
+            cfg.settings = dict(c.DEFAULT_SETTINGS)
+            # from_config fait un appel HTTP bloquant (détection) : en thread
+            # pour ne pas geler la boucle asyncio où tourne le stub server
+            registry = await asyncio.to_thread(reg.Registry.from_config, cfg)
+            self.assertIn("local-test", registry.providers)
+            p = registry.providers["local-test"]
+            self.assertEqual(p.api_key, "local-sans-cle")
+            self.assertEqual(p.model, "qwen2.5-coder:7b")  # auto-détecté !
+            out = await p.chat("test", "réponds pong", max_tokens=8)
+            self.assertIn("pong local", out)
+        finally:
+            srv.close()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

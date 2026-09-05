@@ -85,25 +85,33 @@
       "max_wait": 900,
       "auto_approve": true,
       "min_interval": 2.0
+    },
+    "local": {
+      "kind": "openai_compat",
+      "preset": "ollama",
+      "comment": "IA locale Ollama — sans clé, détection auto du modèle (change base_url pour LM Studio : http://localhost:1234/v1)"
     }
   },
   "chains": {
     "repairer": [
       "fable",
       "openrouter",
-      "mistral"
+      "mistral",
+      "local"
     ],
     "coder": [
       "fable",
       "openrouter",
       "mistral",
-      "gemini"
+      "gemini",
+      "local"
     ],
     "validator": [
       "fable",
       "openrouter",
       "mistral",
-      "gemini"
+      "gemini",
+      "local"
     ],
     "boss": [
       "groq",
@@ -119,7 +127,8 @@
       "cerebras",
       "fireworks",
       "cloudflare",
-      "openai"
+      "openai",
+      "local"
     ],
     "jules-tasks": [
       "jules"

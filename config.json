@@ -75,14 +75,52 @@
       "http_timeout": 60,
       "max_wait": 900,
       "auto_approve": true
+    },
+    "local": {
+      "kind": "openai_compat",
+      "preset": "ollama",
+      "comment": "IA locale Ollama — sans clé, détection auto du modèle (change base_url pour LM Studio : http://localhost:1234/v1)"
     }
   },
   "chains": {
-    "repairer": ["fable", "openrouter", "mistral"],
-    "coder": ["fable", "openrouter", "mistral", "gemini"],
-    "validator": ["fable", "openrouter", "gemini"],
-    "boss": ["openrouter", "gemini"],
-    "chat": ["openrouter", "gemini", "groq", "mistral", "deepseek", "together", "cerebras", "fireworks", "cloudflare", "openai"],
-    "jules-tasks": ["jules"]
+    "repairer": [
+      "fable",
+      "openrouter",
+      "mistral",
+      "local"
+    ],
+    "coder": [
+      "fable",
+      "openrouter",
+      "mistral",
+      "gemini",
+      "local"
+    ],
+    "validator": [
+      "fable",
+      "openrouter",
+      "gemini",
+      "local"
+    ],
+    "boss": [
+      "openrouter",
+      "gemini"
+    ],
+    "chat": [
+      "openrouter",
+      "gemini",
+      "groq",
+      "mistral",
+      "deepseek",
+      "together",
+      "cerebras",
+      "fireworks",
+      "cloudflare",
+      "openai",
+      "local"
+    ],
+    "jules-tasks": [
+      "jules"
+    ]
   }
 }

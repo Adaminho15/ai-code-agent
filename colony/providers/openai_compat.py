@@ -2,7 +2,9 @@
 
 Couvre NATIVEMENT (via presets) : OpenRouter, Cloudflare Workers AI, Groq,
 Mistral, DeepSeek, Together, Cerebras, Fireworks, Google Gemini (endpoint
-OpenAI-compat), OpenAI... et n'importe quelle passerelle custom via base_url.
+OpenAI-compat), OpenAI... et les IAs LOCALES (Ollama, LM Studio, llama.cpp —
+sans clé, avec détection auto du modèle pour Ollama), et n'importe quelle
+passerelle custom via base_url.
 
 Le format d'appel est toujours POST {base_url}/chat/completions.
 """
@@ -11,6 +13,23 @@ from __future__ import annotations
 from .base import Provider, ProviderError, ResponseFormatError, post_json
 
 PRESETS: dict[str, dict] = {
+    # --- IAs locales (sans clé) ---
+    "ollama": {
+        "base_url": "http://localhost:11434/v1",
+        "keyless": True,
+        "model": "",            # vide = auto-détection du 1er modèle installé
+    },
+    "lmstudio": {
+        "base_url": "http://localhost:1234/v1",
+        "keyless": True,
+        "model": "",
+    },
+    "llamacpp": {
+        "base_url": "http://localhost:8080/v1",
+        "keyless": True,
+        "model": "",
+    },
+    # --- clouds ---
     "openrouter": {
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
@@ -83,6 +102,12 @@ class OpenAICompatProvider(Provider):
 
     async def _chat(self, system: str, prompt: str,
                     max_tokens: int, temperature: float) -> str:
+        if not self.model:
+            raise ResponseFormatError(
+                f"{self.name}: aucun modèle local détecté — lance ton serveur "
+                f"(ex : `ollama serve`) et installe un modèle "
+                f"(ex : `ollama pull qwen2.5-coder:7b`), ou précise "
+                f"'model' dans config.json")
         body = {
             "model": self.model,
             "messages": [

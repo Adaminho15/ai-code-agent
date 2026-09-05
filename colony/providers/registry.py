@@ -6,7 +6,9 @@ le larbin sur une AUTRE IA » (jamais la même).
 """
 from __future__ import annotations
 
+import json
 import os
+import urllib.request
 from typing import Iterable
 
 from ..log import log
@@ -23,6 +25,24 @@ def _substitute_env(value: str) -> str:
     for key in list(os.environ):
         out = out.replace("{" + key + "}", os.environ[key])
     return out
+
+
+def _detect_local_model(base_url: str) -> str:
+    """Ollama : détecte le premier modèle installé via /api/tags.
+
+    Retourne "" si le serveur local est éteint ou ne répond pas.
+    """
+    root = base_url.rsplit("/v1", 1)[0]
+    try:
+        req = urllib.request.Request(root + "/api/tags", method="GET")
+        with urllib.request.urlopen(req, timeout=2.0) as r:
+            data = json.loads(r.read().decode("utf-8", "replace"))
+        models = data.get("models") or []
+        if models:
+            return str(models[0].get("name", ""))
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
 
 
 class Registry:
@@ -90,10 +110,25 @@ class Registry:
             raise RuntimeError(f"variable d'environnement manquante dans "
                                f"{base_url}")
         key_env = spec.get("api_key_env") or preset.get("api_key_env", "")
-        api_key = os.environ.get(key_env, "") if key_env else ""
-        if not api_key:
-            raise RuntimeError(f"clé {key_env} absente du .env")
+        keyless = bool(spec.pop("keyless", False)
+                       or preset.get("keyless", False))
+        if keyless:
+            api_key = "local-sans-cle"   # header ignoré par les serveurs locaux
+        else:
+            api_key = os.environ.get(key_env, "") if key_env else ""
+            if not api_key:
+                raise RuntimeError(f"clé {key_env} absente du .env")
         model = spec.get("model") or preset.get("model", "")
+        if keyless and not model:
+            # IA locale : auto-détection du premier modèle installé (Ollama)
+            model = _detect_local_model(base_url)
+            if model:
+                log("registry", f"🦙 modèle local détecté : {model}", "🔌")
+            else:
+                log("registry", "⚠️ aucun modèle local détecté (serveur "
+                                "éteint ? `ollama pull ...`) — précise "
+                                "'model' dans config.json sinon ce provider "
+                                "échouera", "🔌")
         spec.pop("api_key_env", None)
         spec.pop("model", None)
         spec.pop("base_url", None)
